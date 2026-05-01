@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Team Task Manager</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="auth-container">
+
+<div class="auth-card">
+    <h1>Create Account</h1>
+
+    <form id="signupForm">
+
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" required minlength="6">
+        </div>
+
+        <div class="form-group">
+            <label for="role">Role</label>
+            <select id="role">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;">
+            Create Account
+        </button>
+
+    </form>
+
+    <p style="margin-top:1.5rem; text-align:center;">
+        Already have an account?
+        <a href="login.html">Sign In</a>
+    </p>
+</div>
+
+<script src="js/api.js"></script>
+
+<script>
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const role = document.getElementById('role').value;
+
+        try {
+            await AuthAPI.signup(username, email, password, role);
+            alert('Registration successful! Please login.');
+            window.location.href = 'login.html';
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+</script>
+
+</body>
+</html>

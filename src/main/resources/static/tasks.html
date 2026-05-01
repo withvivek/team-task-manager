@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - Team Task Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="main-content">
+        <div class="navbar">
+            <h1>Task Management</h1>
+            <button id="addTaskBtn" class="btn btn-primary" style="display: none;">+ New Task</button>
+        </div>
+
+        <div class="data-table-container">
+            <table id="tasksTable">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Project</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Tasks loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h2>Create New Task</h2>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label>Task Title</label>
+                    <input type="text" id="taskTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="taskDesc"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Project</label>
+                    <select id="taskProject" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Assign To</label>
+                    <select id="taskUser" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Due Date</label>
+                    <input type="date" id="taskDueDate" required>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script>
+        checkAuth();
+        renderSidebar('tasks');
+
+        const user = JSON.parse(localStorage.getItem('user'));
+        const isAdmin = user.roles.includes('ROLE_ADMIN');
+
+        if (isAdmin) {
+            document.getElementById('addTaskBtn').style.display = 'block';
+        }
+
+        async function loadTasks() {
+            try {
+                const tasks = await TaskAPI.getAll();
+                const tbody = document.querySelector('#tasksTable tbody');
+                tbody.innerHTML = tasks.map(t => `
+                    <tr>
+                        <td><strong>${t.title}</strong></td>
+                        <td>${t.project.name}</td>
+                        <td>${t.assignedTo.username}</td>
+                        <td>
+                            <select onchange="updateStatus(${t.id}, this.value)" class="badge badge-${t.status.toLowerCase().replace('_', '')}" style="border:none; cursor:pointer;">
+                                <option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>PENDING</option>
+                                <option value="IN_PROGRESS" ${t.status === 'IN_PROGRESS' ? 'selected' : ''}>IN PROGRESS</option>
+                                <option value="DONE" ${t.status === 'DONE' ? 'selected' : ''}>DONE</option>
+                            </select>
+                        </td>
+                        <td>${t.dueDate}</td>
+                        <td>
+                            ${isAdmin ? `<button onclick="deleteTask(${t.id})" class="btn" style="color: var(--danger); background:none; padding:0;">Delete</button>` : '-'}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function updateStatus(id, newStatus) {
+            try {
+                await TaskAPI.updateStatus(id, newStatus);
+                loadTasks();
+            } catch (error) {
+                alert(error.message);
+                loadTasks();
+            }
+        }
+
+        async function deleteTask(id) {
+            if (confirm('Are you sure?')) {
+                try {
+                    await TaskAPI.delete(id);
+                    loadTasks();
+                } catch (error) {
+                    alert(error.message);
+                }
+            }
+        }
+
+        async function loadFormData() {
+            try {
+                const projects = await ProjectAPI.getAll();
+                const users = await UserAPI.getAll();
+
+                document.getElementById('taskProject').innerHTML = projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                document.getElementById('taskUser').innerHTML = users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        document.getElementById('addTaskBtn').onclick = () => {
+            document.getElementById('taskModal').style.display = 'flex';
+            loadFormData();
+        };
+
+        function closeModal() {
+            document.getElementById('taskModal').style.display = 'none';
+        }
+
+        document.getElementById('taskForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                title: document.getElementById('taskTitle').value,
+                description: document.getElementById('taskDesc').value,
+                projectId: document.getElementById('taskProject').value,
+                assignedToId: document.getElementById('taskUser').value,
+                dueDate: document.getElementById('taskDueDate').value
+            };
+
+            try {
+                await TaskAPI.create(data);
+                closeModal();
+                loadTasks();
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        loadTasks();
+    </script>
+</body>
+
+</html>

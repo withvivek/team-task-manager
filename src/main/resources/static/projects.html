@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects - Team Task Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="main-content">
+        <div class="navbar">
+            <h1>Project Management</h1>
+            <button id="addProjectBtn" class="btn btn-primary" style="display: none;">+ New Project</button>
+        </div>
+
+        <div class="data-table-container">
+            <table id="projectsTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Members</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Projects loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <h2>Create New Project</h2>
+            <form id="projectForm">
+                <div class="form-group">
+                    <label>Project Name</label>
+                    <input type="text" id="projName" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="projDesc"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Assign Members</label>
+                    <select id="projMembers" multiple style="height: 100px;">
+                        <!-- Users loaded here -->
+                    </select>
+                    <small>Hold Ctrl (Cmd) to select multiple</small>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script>
+        checkAuth();
+        renderSidebar('projects');
+
+        const user = JSON.parse(localStorage.getItem('user'));
+        const isAdmin = user.roles.includes('ROLE_ADMIN');
+
+        if (isAdmin) {
+            document.getElementById('addProjectBtn').style.display = 'block';
+        }
+
+        async function loadProjects() {
+            try {
+                const projects = await ProjectAPI.getAll();
+                const tbody = document.querySelector('#projectsTable tbody');
+                tbody.innerHTML = projects.map(p => `
+                    <tr>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.description || '-'}</td>
+                        <td>${p.members.map(m => m.username).join(', ') || 'No members'}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const users = await UserAPI.getAll();
+                const select = document.getElementById('projMembers');
+                select.innerHTML = users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        document.getElementById('addProjectBtn').onclick = () => {
+            document.getElementById('projectModal').style.display = 'flex';
+            loadUsers();
+        };
+
+        function closeModal() {
+            document.getElementById('projectModal').style.display = 'none';
+        }
+
+        document.getElementById('projectForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('projName').value;
+            const description = document.getElementById('projDesc').value;
+            const memberIds = Array.from(document.getElementById('projMembers').selectedOptions).map(o => o.value);
+
+            try {
+                await ProjectAPI.create({ name, description, memberIds });
+                closeModal();
+                loadProjects();
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        loadProjects();
+    </script>
+</body>
+
+</html>
