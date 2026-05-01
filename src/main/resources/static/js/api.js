@@ -1,7 +1,8 @@
 const API_BASE_URL = '/api';
 
 const apiFetch = async (endpoint, options = {}) => {
-    const token = localStorage.getItem('token');
+    const isAuthEndpoint = endpoint.includes('/auth/');
+    const token = !isAuthEndpoint ? localStorage.getItem('token') : null;
     
     const headers = {
         'Content-Type': 'application/json',
@@ -14,14 +15,22 @@ const apiFetch = async (endpoint, options = {}) => {
         headers,
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && !isAuthEndpoint) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = 'login.html';
-        return;
+        if (!window.location.pathname.endsWith('login.html')) {
+            window.location.href = 'login.html';
+            return;
+        }
     }
 
-    const data = await response.json();
+    let data;
+    try {
+        data = await response.json();
+    } catch (e) {
+        data = { message: 'Network error or invalid server response' };
+    }
+
     if (!response.ok) {
         throw new Error(data.message || 'Something went wrong');
     }
